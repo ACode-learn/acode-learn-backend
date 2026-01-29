@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class AcodeLearnBackendApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(AcodeLearnBackendApplication.class, args);
-    }
+	public static void main(String[] args) {
+		SpringApplication.run(AcodeLearnBackendApplication.class, args);
+	}
 
 }
