@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 000-initial-setup
+      author: junie
+      comment: Initial empty changelog
+      changes:
+        - empty: {}
