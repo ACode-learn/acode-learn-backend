@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: acodelearn-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: acodelearn
+      POSTGRES_USER: acodelearn
+      POSTGRES_PASSWORD: acodelearn
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
