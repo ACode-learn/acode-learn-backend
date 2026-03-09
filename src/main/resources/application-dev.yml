@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5434/acodelearn}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:acodelearn}
+    password: ${DB_PASSWORD:acodelearn}
+#    url: "${SPRING_DATASOURCE_URL:jdbc:h2:file:./data/acodelearn-db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE}"
+#    username: "${SPRING_DATASOURCE_USERNAME:sa}"
+#    password: "${SPRING_DATASOURCE_PASSWORD:pass}"
+#    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: "${AUTH_SERVER_ISSUER_URI:http://localhost:8080/realms/acode}"

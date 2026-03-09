@@ -1,3 +1,17 @@
 spring:
   application:
     name: acode-learn-backend
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  threads:
+    virtual:
+      enabled: true
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+server:
+  port: 8082
