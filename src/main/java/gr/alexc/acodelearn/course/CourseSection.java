@@ -1,5 +1,7 @@
 package gr.alexc.acodelearn.course;
 
+import gr.alexc.acodelearn.course.content.SectionContent;
+import gr.alexc.acodelearn.course.content.SectionContentConverter;
 import gr.alexc.acodelearn.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -33,6 +35,10 @@ public class CourseSection extends BaseEntity {
     @Column(name = "section_order")
     private Integer sectionOrder;
 
+    @Convert(converter = SectionContentConverter.class)
+    @Column(name = "content_json", columnDefinition = "TEXT", nullable = false)
+    private SectionContent content = SectionContent.empty();
+
     @ElementCollection
     @CollectionTable(name = "course_section_has_resource", joinColumns = @JoinColumn(name = "course_section_id", nullable = false))
     @Column(name = "resource_id", nullable = false)
@@ -43,5 +49,6 @@ public class CourseSection extends BaseEntity {
         this.name = name;
         this.description = description;
         this.sectionOrder = order;
+        this.content = SectionContent.empty();
     }
 }

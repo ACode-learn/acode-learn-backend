@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-content-json-to-course-section
+      author: junie
+      changes:
+        - addColumn:
+            tableName: course_section
+            columns:
+              - column:
+                  name: content_json
+                  type: TEXT
+                  defaultValue: '{"version":1,"layout":"LESSON","blocks":[]}'
+                  constraints:
+                    nullable: false

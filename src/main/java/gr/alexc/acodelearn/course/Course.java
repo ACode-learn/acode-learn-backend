@@ -1,5 +1,6 @@
 package gr.alexc.acodelearn.course;
 
+import gr.alexc.acodelearn.course.content.SectionContent;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -7,8 +8,10 @@ import lombok.Setter;
 import org.springframework.data.domain.AbstractAggregateRoot;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Entity
 @Table(name = "course")
@@ -33,19 +36,26 @@ public class Course extends AbstractAggregateRoot<Course> {
     @Column(name = "semester")
     private Integer semester;
 
+    /**
+     * The single owner of the course (typically the creator). The owner is
+     * always also an instructor. ADMIN can override owner-only operations.
+     */
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     @Version
     @Column(name = "version")
     private Long version;
 
+    /**
+     * Local ids of users who can teach/edit this course (includes the owner).
+     * Membership in this set requires a global {@code TEACHER} role; that
+     * invariant is enforced by the application layer when adding instructors.
+     */
     @ElementCollection
-    @CollectionTable(name = "course_has_user", joinColumns = @JoinColumn(name = "course_id", nullable = false))
+    @CollectionTable(name = "course_instructor", joinColumns = @JoinColumn(name = "course_id", nullable = false))
     @Column(name = "user_id", nullable = false)
-    private List<Long> enrolledStudentIds = new ArrayList<>();
-
-    @ElementCollection
-    @CollectionTable(name = "user_has_course", joinColumns = @JoinColumn(name = "course_id", nullable = false))
-    @Column(name = "user_id", nullable = false)
-    private List<Long> instructorIds = new ArrayList<>();
+    private Set<Long> instructorIds = new HashSet<>();
 
     @OneToMany(
             fetch = FetchType.LAZY,
@@ -56,19 +66,47 @@ public class Course extends AbstractAggregateRoot<Course> {
     @OrderBy("sectionOrder ASC")
     private List<CourseSection> courseSections = new ArrayList<>();
 
-    public CourseSection addSection(String name, String description, Integer order) {
+    public CourseSection addSection(String name, String description, Integer order, SectionContent content) {
         CourseSection section = new CourseSection(this, name, description, order);
+        if (content != null) {
+            section.setContent(content);
+        }
         this.courseSections.add(section);
         registerEvent(new CourseSectionCreatedEvent(this.id));
         return section;
     }
 
-    public boolean hasInstructor(Long userId) {
-        return instructorIds.contains(userId);
+    public boolean isOwner(Long userId) {
+        return userId != null && userId.equals(ownerId);
     }
 
-    public boolean hasStudent(Long userId) {
-        return enrolledStudentIds.contains(userId);
+    public boolean hasInstructor(Long userId) {
+        return userId != null && instructorIds.contains(userId);
+    }
+
+    /**
+     * Records {@code userId} as the owner of this course. The owner is also
+     * always an instructor.
+     */
+    public void assignOwner(Long userId) {
+        this.ownerId = userId;
+        if (userId != null) {
+            this.instructorIds.add(userId);
+        }
+    }
+
+    public void addInstructor(Long userId) {
+        if (userId != null) {
+            this.instructorIds.add(userId);
+        }
+    }
+
+    public void removeInstructor(Long userId) {
+        if (userId == null) return;
+        if (userId.equals(ownerId)) {
+            throw new IllegalStateException("The course owner cannot be removed from instructors. Transfer ownership first.");
+        }
+        this.instructorIds.remove(userId);
     }
 
     public void updateDetails(String title, String description, Integer semester) {
@@ -86,11 +124,12 @@ public class Course extends AbstractAggregateRoot<Course> {
         });
     }
 
-    public CourseSection updateSection(Long sectionId, String name, String description, Integer order) {
+    public CourseSection updateSection(Long sectionId, String name, String description, Integer order, SectionContent content) {
         CourseSection section = findSection(sectionId);
         if (name != null) section.setName(name);
         if (description != null) section.setDescription(description);
         if (order != null) section.setSectionOrder(order);
+        if (content != null) section.setContent(content);
         return section;
     }
 

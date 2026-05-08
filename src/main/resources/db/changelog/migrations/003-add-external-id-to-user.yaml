@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-external-id-to-user
+      author: junie
+      changes:
+        - addColumn:
+            tableName: "user"
+            columns:
+              - column:
+                  name: external_id
+                  type: VARCHAR(255)
+                  constraints:
+                    unique: true

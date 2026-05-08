@@ -23,7 +23,12 @@ public class CourseSectionCommandHandler {
     @Transactional
     public CourseSection createSection(CreateCourseSectionCommand command) {
         Course course = findCourse(command.courseId());
-        CourseSection section = course.addSection(command.name(), command.description(), command.order());
+        CourseSection section = course.addSection(
+                command.name(),
+                command.description(),
+                command.order(),
+                command.content()
+        );
         courseRepository.save(course);
         return section;
     }
@@ -31,7 +36,13 @@ public class CourseSectionCommandHandler {
     @Transactional
     public CourseSection updateSection(UpdateCourseSectionCommand command) {
         Course course = findCourse(command.courseId());
-        CourseSection section = course.updateSection(command.sectionId(), command.name(), command.description(), command.order());
+        CourseSection section = course.updateSection(
+                command.sectionId(),
+                command.name(),
+                command.description(),
+                command.order(),
+                command.content()
+        );
         courseRepository.save(course);
         return section;
     }
@@ -76,6 +87,16 @@ public class CourseSectionCommandHandler {
     public Course updateCourse(UpdateCourseCommand command) {
         Course course = findCourse(command.courseId());
         course.updateDetails(command.title(), command.description(), command.semester());
+        return courseRepository.save(course);
+    }
+
+    @Transactional
+    public Course createCourse(CreateCourseCommand command, Long ownerUserId) {
+        Course course = new Course();
+        course.setTitle(command.title());
+        course.setDescription(command.description());
+        course.setSemester(command.semester());
+        course.assignOwner(ownerUserId);
         return courseRepository.save(course);
     }
 

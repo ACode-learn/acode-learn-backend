@@ -1,7 +1,9 @@
 package gr.alexc.acodelearn.course.query;
 
 import gr.alexc.acodelearn.course.Course;
+import gr.alexc.acodelearn.course.CourseEnrollment;
 import gr.alexc.acodelearn.course.CourseSection;
+import gr.alexc.acodelearn.course.internal.CourseEnrollmentRepository;
 import gr.alexc.acodelearn.course.internal.CourseRepository;
 import gr.alexc.acodelearn.course.internal.CourseSectionRepository;
 import gr.alexc.acodelearn.course.query.projections.CourseSectionView;
@@ -17,9 +19,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CourseQueryHandler {
-
     private final CourseRepository courseRepository;
     private final CourseSectionRepository sectionRepository;
+    private final CourseEnrollmentRepository enrollmentRepository;
 
     public Course findById(Long id) {
         return courseRepository.findById(id)
@@ -28,11 +30,19 @@ public class CourseQueryHandler {
 
     public CourseSummaryView getSummary(Long id) {
         Course c = findById(id);
-        return new CourseSummaryView(c.getId(), c.getTitle(), c.getDescription(), c.getSemester());
+        return toSummaryView(c);
     }
 
     public List<CourseSummaryView> getCoursesForStudent(Long userId) {
-        return courseRepository.findByEnrolledStudentIdsContaining(userId).stream()
+        List<Long> courseIds = enrollmentRepository
+                .findByUserIdAndStatus(userId, CourseEnrollment.Status.ACTIVE)
+                .stream()
+                .map(CourseEnrollment::getCourseId)
+                .toList();
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        return courseRepository.findAllById(courseIds).stream()
                 .map(this::toSummaryView)
                 .toList();
     }
@@ -65,6 +75,7 @@ public class CourseQueryHandler {
                 cs.getName(),
                 cs.getDescription(),
                 cs.getSectionOrder(),
+                cs.getContent(),
                 cs.getCreatedAt()
         );
     }

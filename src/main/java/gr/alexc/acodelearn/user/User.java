@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "\"user\"")
 @Getter
@@ -20,6 +23,9 @@ public class User extends BaseEntity {
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
+    @Column(name = "external_id", unique = true)
+    private String externalId;
+
     @Column(name = "first_name")
     private String firstName;
 
@@ -28,4 +34,20 @@ public class User extends BaseEntity {
 
     @Column(name = "email")
     private String email;
+
+    /**
+     * Local snapshot of the user's global Keycloak roles.
+     *
+     * <p><b>Do not</b> use this for authorization decisions on the current
+     * request — use {@code Authentication#getAuthorities()} for that. This
+     * field exists for querying/filtering only (e.g. "list all teachers").
+     */
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "user_role",
+            joinColumns = @JoinColumn(name = "user_id", nullable = false)
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private Set<GlobalRole> roles = new HashSet<>();
 }

@@ -1,0 +1,170 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-add-user-role
+      author: migration
+      comment: Local snapshot of Keycloak global roles for querying/filtering.
+      changes:
+        - createTable:
+            tableName: user_role
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: user_role
+            columnNames: user_id, role
+        - addForeignKeyConstraint:
+            baseTableName: user_role
+            baseColumnNames: user_id
+            referencedTableName: "user"
+            referencedColumnNames: id
+            constraintName: fk_user_role_user
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 004-add-course-owner-id
+      author: migration
+      comment: Add owner column on course (nullable for legacy rows).
+      changes:
+        - addColumn:
+            tableName: course
+            columns:
+              - column:
+                  name: owner_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: course
+            baseColumnNames: owner_id
+            referencedTableName: "user"
+            referencedColumnNames: id
+            constraintName: fk_course_owner
+
+  - changeSet:
+      id: 004-rename-user-has-course-to-course-instructor
+      author: migration
+      comment: Rename instructor join table to a clearer name; matches @CollectionTable on Course.instructorIds.
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: user_has_course
+            constraintName: fk_uhc_user
+        - dropForeignKeyConstraint:
+            baseTableName: user_has_course
+            constraintName: fk_uhc_course
+        - renameTable:
+            oldTableName: user_has_course
+            newTableName: course_instructor
+        - addForeignKeyConstraint:
+            baseTableName: course_instructor
+            baseColumnNames: user_id
+            referencedTableName: "user"
+            referencedColumnNames: id
+            constraintName: fk_course_instructor_user
+        - addForeignKeyConstraint:
+            baseTableName: course_instructor
+            baseColumnNames: course_id
+            referencedTableName: course
+            referencedColumnNames: id
+            constraintName: fk_course_instructor_course
+
+  - changeSet:
+      id: 004-create-course-enrollment
+      author: migration
+      comment: New first-class entity for course enrollments, supporting PENDING (by-email) and ACTIVE states.
+      changes:
+        - createTable:
+            tableName: course_enrollment
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: course_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: activated_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+              - column:
+                  name: version
+                  type: BIGINT
+                  defaultValueNumeric: 0
+        - addForeignKeyConstraint:
+            baseTableName: course_enrollment
+            baseColumnNames: course_id
+            referencedTableName: course
+            referencedColumnNames: id
+            constraintName: fk_course_enrollment_course
+        - addForeignKeyConstraint:
+            baseTableName: course_enrollment
+            baseColumnNames: user_id
+            referencedTableName: "user"
+            referencedColumnNames: id
+            constraintName: fk_course_enrollment_user
+        - createIndex:
+            indexName: idx_course_enrollment_user
+            tableName: course_enrollment
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            indexName: idx_course_enrollment_course_status
+            tableName: course_enrollment
+            columns:
+              - column:
+                  name: course_id
+              - column:
+                  name: status
+        - createIndex:
+            indexName: idx_course_enrollment_email
+            tableName: course_enrollment
+            columns:
+              - column:
+                  name: email
+
+  - changeSet:
+      id: 004-migrate-legacy-enrollments
+      author: migration
+      comment: Copy existing course_has_user rows into course_enrollment as ACTIVE.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO course_enrollment (course_id, user_id, status, activated_at, version)
+              SELECT course_id, user_id, 'ACTIVE', CURRENT_TIMESTAMP, 0
+              FROM course_has_user
+
+  - changeSet:
+      id: 004-drop-course-has-user
+      author: migration
+      comment: Replaced by course_enrollment.
+      changes:
+        - dropTable:
+            tableName: course_has_user
