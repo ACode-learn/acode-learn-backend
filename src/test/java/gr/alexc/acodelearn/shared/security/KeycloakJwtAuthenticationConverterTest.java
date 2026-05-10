@@ -143,4 +143,88 @@ class KeycloakJwtAuthenticationConverterTest {
 
         assertThat(authorityNames(token)).contains("ROLE_TEACHER");
     }
+
+    @Test
+    void mapsAllGlobalRolesFromRealmAccess() {
+        KeycloakJwtAuthenticationConverter converter =
+                new KeycloakJwtAuthenticationConverter(null);
+
+        Jwt jwt = baseJwt()
+                .subject("subj")
+                .claim("preferred_username", "all-roles")
+                .claim("realm_access", Map.of("roles", List.of("STUDENT", "TEACHER", "ADMIN")))
+                .build();
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertThat(authorityNames(token))
+                .containsExactlyInAnyOrder("ROLE_STUDENT", "ROLE_TEACHER", "ROLE_ADMIN");
+    }
+
+    @Test
+    void handlesNullAndEmptyRolesInRealmAccess() {
+        KeycloakJwtAuthenticationConverter converter =
+                new KeycloakJwtAuthenticationConverter(null);
+
+        Jwt jwt = baseJwt()
+                .subject("subj")
+                .claim("preferred_username", "edge-cases")
+                .claim("realm_access", Map.of("roles", List.of("ADMIN", "", "  ", "null"))) // "null" is a string here
+                .build();
+
+        // Note: the converter handles null by filtering it out, let's try real null too
+        jwt = baseJwt()
+                .subject("subj")
+                .claim("preferred_username", "edge-cases")
+                .claim("realm_access", Map.of("roles", java.util.Arrays.asList("ADMIN", null, "")))
+                .build();
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertThat(authorityNames(token)).containsExactly("ROLE_ADMIN");
+    }
+
+    @Test
+    void handlesMalformedClaims() {
+        KeycloakJwtAuthenticationConverter converter =
+                new KeycloakJwtAuthenticationConverter("acodelearn-backend");
+
+        // realm_access is not a map
+        Jwt jwt = baseJwt()
+                .subject("subj")
+                .claim("realm_access", "not-a-map")
+                .build();
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+        assertThat(authorityNames(token)).noneMatch(a -> a.startsWith("ROLE_"));
+
+        // roles in realm_access is not a collection
+        jwt = baseJwt()
+                .subject("subj")
+                .claim("realm_access", Map.of("roles", "not-a-list"))
+                .build();
+
+        token = converter.convert(jwt);
+        assertThat(authorityNames(token)).noneMatch(a -> a.startsWith("ROLE_"));
+
+        // resource_access is not a map
+        jwt = baseJwt()
+                .subject("subj")
+                .claim("resource_access", "not-a-map")
+                .build();
+
+        token = converter.convert(jwt);
+        assertThat(authorityNames(token)).noneMatch(a -> a.startsWith("ROLE_"));
+
+        // roles in resource_access is not a collection
+        jwt = baseJwt()
+                .subject("subj")
+                .claim("resource_access", Map.of(
+                        "acodelearn-backend", Map.of("roles", "not-a-list")
+                ))
+                .build();
+
+        token = converter.convert(jwt);
+        assertThat(authorityNames(token)).noneMatch(a -> a.startsWith("ROLE_"));
+    }
 }

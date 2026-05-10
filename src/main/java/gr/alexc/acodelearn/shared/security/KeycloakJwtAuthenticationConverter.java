@@ -68,8 +68,8 @@ public class KeycloakJwtAuthenticationConverter
 
     @SuppressWarnings("unchecked")
     private Collection<GrantedAuthority> realmRoles(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaimAsMap(REALM_ACCESS_CLAIM);
-        if (realmAccess == null) {
+        Object realmAccessClaim = jwt.getClaim(REALM_ACCESS_CLAIM);
+        if (!(realmAccessClaim instanceof Map<?, ?> realmAccess)) {
             return List.of();
         }
         Object roles = realmAccess.get(ROLES_CLAIM);
@@ -87,8 +87,8 @@ public class KeycloakJwtAuthenticationConverter
         if (resourceClientId == null || resourceClientId.isBlank()) {
             return List.of();
         }
-        Map<String, Object> resourceAccess = jwt.getClaimAsMap(RESOURCE_ACCESS_CLAIM);
-        if (resourceAccess == null) {
+        Object resourceAccessClaim = jwt.getClaim(RESOURCE_ACCESS_CLAIM);
+        if (!(resourceAccessClaim instanceof Map<?, ?> resourceAccess)) {
             return List.of();
         }
         Object client = resourceAccess.get(resourceClientId);
