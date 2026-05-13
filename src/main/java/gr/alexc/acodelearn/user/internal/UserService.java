@@ -6,17 +6,14 @@ import gr.alexc.acodelearn.user.UserCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -29,25 +26,60 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final ApplicationEventPublisher events;
+    private final Environment environment;
 
     @Transactional
     public UserView getOrCreateUser(Jwt jwt) {
         String externalId = jwt.getSubject();
 
-        User user = userRepository.findByExternalId(externalId)
+        User user = findExistingUser(jwt)
                 .map(existingUser -> syncUser(existingUser, jwt))
                 .orElseGet(() -> {
                     try {
                         return createUser(jwt);
                     } catch (DataIntegrityViolationException e) {
                         log.info("User creation race condition for externalId: {}, retrying lookup", externalId);
-                        return userRepository.findByExternalId(externalId)
+                        return findExistingUser(jwt)
                                 .map(existingUser -> syncUser(existingUser, jwt))
                                 .orElseThrow(() -> e);
                     }
                 });
 
         return toView(user);
+    }
+
+    private Optional<User> findExistingUser(Jwt jwt) {
+        String externalId = jwt.getSubject();
+
+        Optional<User> userByExternalId = userRepository.findByExternalId(externalId);
+        if (userByExternalId.isPresent()) {
+            return userByExternalId;
+        }
+
+        if (!isDevProfile()) {
+            return Optional.empty();
+        }
+
+        String email = jwt.getClaimAsString("email");
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+
+        return userRepository.findByEmailIgnoreCase(email)
+                .map(user -> {
+                    log.info(
+                            "Dev profile user relink by email: email={}, oldExternalId={}, newExternalId={}",
+                            email,
+                            user.getExternalId(),
+                            externalId
+                    );
+                    user.setExternalId(externalId);
+                    return user;
+                });
+    }
+
+    private boolean isDevProfile() {
+        return environment.acceptsProfiles(Profiles.of("dev"));
     }
 
     private User createUser(Jwt jwt) {
