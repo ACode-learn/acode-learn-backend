@@ -1,3 +1,5 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.0.2'
@@ -7,6 +9,11 @@ plugins {
 group = 'gr.alexc'
 version = '0.0.1-SNAPSHOT'
 description = 'acode-learn-backend'
+
+ext {
+	springdocOpenapiStarterWebmvcUiVersion = '3.0.3'
+}
+
 
 java {
 	toolchain {
@@ -43,6 +50,7 @@ dependencies {
 	implementation 'org.springframework.modulith:spring-modulith-starter-jpa'
 	implementation 'org.springframework.modulith:spring-modulith-events-jpa'
 	implementation 'org.mapstruct:mapstruct:1.6.3'
+	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocOpenapiStarterWebmvcUiVersion}"
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
@@ -58,6 +66,16 @@ dependencies {
 	runtimeOnly 'org.postgresql:postgresql'
 	runtimeOnly 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+processResources {
+	filesMatching('application*.yml') {
+		filter ReplaceTokens, tokens: [
+				'project.name'                                : rootProject.name,
+				'project.version'                             : project.version.toString(),
+				'springdoc-openapi-starter-webmvc-ui.version' : springdocOpenapiStarterWebmvcUiVersion
+		]
+	}
 }
 
 tasks.named('test') {
